@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { DOMAIN_EVENTS } from '../events/domain-events';
+import { EventStore } from '../events/entities/event-store.entity';
 
 export interface EmailTemplateDefinition {
   template: string;
@@ -31,7 +33,30 @@ function formatAmount(amount: unknown, currency = 'NGN'): string | undefined {
 
 @Injectable()
 export class EmailTemplateRegistry {
-  private readonly logger = new Logger(EmailTemplateRegistry.name);
+  resolve(event: EventStore): EmailTemplateDefinition | null {
+    const payload = event.payload ?? {};
+
+    switch (event.eventType) {
+      case DOMAIN_EVENTS.SUBSCRIPTION_CREATED:
+        return this.subscriptionCreated(payload);
+      case DOMAIN_EVENTS.SUBSCRIPTION_UPDATED:
+        return payload.activated === true
+          ? this.subscriptionActivated(payload)
+          : null;
+      case DOMAIN_EVENTS.SUBSCRIPTION_CANCELLED:
+        return this.subscriptionCancelled(payload);
+      case DOMAIN_EVENTS.SUBSCRIPTION_RENEWED:
+        return this.subscriptionRenewed(payload);
+      case DOMAIN_EVENTS.INVOICE_PAID:
+        return this.invoicePaid(payload);
+      case DOMAIN_EVENTS.PAYMENT_FAILED:
+        return this.paymentFailed(payload);
+      case DOMAIN_EVENTS.PAYMENT_RECOVERED:
+        return this.paymentRecovered(payload);
+      default:
+        return null;
+    }
+  }
 
   passwordReset(context: {
     userName: string;
@@ -50,7 +75,7 @@ export class EmailTemplateRegistry {
   }): EmailTemplateDefinition {
     return {
       template: 'emails/welcome-merchant',
-      subject: 'Welcome to Monnify!',
+      subject: 'Welcome to Nomba!',
       context,
     };
   }
@@ -140,6 +165,41 @@ export class EmailTemplateRegistry {
           readString(invoice?.currency) ?? readString(payment?.currency),
         ),
         invoiceNumber: readString(invoice?.invoiceNumber),
+      },
+    };
+  }
+
+  private paymentFailed(payload: PayloadRecord): EmailTemplateDefinition {
+    const payment = asRecord(payload.payment);
+    const invoice = asRecord(payload.invoice);
+
+    return {
+      template: 'emails/payment-failed',
+      subject: 'Action required: payment failed',
+      context: {
+        customerName: 'there',
+        amount: formatAmount(
+          payment?.amount ?? invoice?.total,
+          readString(payment?.currency) ?? readString(invoice?.currency),
+        ),
+        failureReason: readString(payment?.failureReason),
+      },
+    };
+  }
+
+  private paymentRecovered(payload: PayloadRecord): EmailTemplateDefinition {
+    const payment = asRecord(payload.payment);
+    const invoice = asRecord(payload.invoice);
+
+    return {
+      template: 'emails/payment-recovered',
+      subject: 'Your payment was successful',
+      context: {
+        customerName: 'there',
+        amount: formatAmount(
+          payment?.amount ?? invoice?.total,
+          readString(payment?.currency) ?? readString(invoice?.currency),
+        ),
       },
     };
   }

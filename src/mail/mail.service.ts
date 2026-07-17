@@ -17,41 +17,33 @@ export class MailService {
     context: Record<string, unknown>,
     subject: string,
   ): Promise<void> {
-    try {
-      if (!this.config.get<boolean>('mail.enabled')) {
-        this.logger.log(
-          `[MAIL DISABLED] To: ${to} | Template: ${template} | Subject: ${subject}`,
-        );
-        return;
-      }
-
-      await this.mailerService.sendMail({
-        to,
-        subject,
-        template,
-        context: {
-          appName: this.config.get<string>('appName'),
-          ...context,
-        },
-      });
-
-      this.logger.log(`Email sent to ${to} (${template})`);
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${to}: ${error.message}`);
+    if (!this.config.get<boolean>('mail.enabled')) {
+      this.logger.log(
+        `[MAIL DISABLED] To: ${to} | Template: ${template} | Subject: ${subject}`,
+      );
+      return;
     }
+
+    await this.mailerService.sendMail({
+      to,
+      subject,
+      template,
+      context: {
+        appName: this.config.get<string>('appName'),
+        ...context,
+      },
+    });
+
+    this.logger.log(`Email sent to ${to} (${template})`);
   }
 
   async sendRaw(to: string, subject: string, html: string): Promise<void> {
-    try {
-      if (!this.config.get<boolean>('mail.enabled')) {
-        this.logger.log(`[MAIL DISABLED] To: ${to} | Subject: ${subject}`);
-        return;
-      }
-
-      await this.mailerService.sendMail({ to, subject, html });
-      this.logger.log(`Email sent to ${to}`);
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${to}: ${error.message}`);
+    if (!this.config.get<boolean>('mail.enabled')) {
+      this.logger.log(`[MAIL DISABLED] To: ${to} | Subject: ${subject}`);
+      return;
     }
+
+    await this.mailerService.sendMail({ to, subject, html });
+    this.logger.log(`Email sent to ${to}`);
   }
 }

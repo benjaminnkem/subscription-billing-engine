@@ -3,6 +3,7 @@ import { EjsAdapter } from '@nestjs-modules/mailer/adapters/ejs.adapter';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
+import { EmailRecipientResolver } from './email-recipient.resolver';
 import { EmailTemplateRegistry } from './email-template.registry';
 import { MailService } from './mail.service';
 
@@ -21,11 +22,6 @@ import { MailService } from './mail.service';
                 pass: config.get<string>('mail.password'),
               }
             : undefined,
-          family: 4,
-          connectionTimeout: 10_000,
-          greetingTimeout: 10_000,
-          socketTimeout: 20_000,
-          logger: true,
         },
         defaults: {
           from: `"${config.get<string>('mail.fromName')}" <${config.get<string>('mail.fromAddress')}>`,
@@ -40,7 +36,7 @@ import { MailService } from './mail.service';
       }),
     }),
   ],
-  providers: [MailService, EmailTemplateRegistry],
-  exports: [MailService, EmailTemplateRegistry],
+  providers: [MailService, EmailTemplateRegistry, EmailRecipientResolver],
+  exports: [MailService, EmailTemplateRegistry, EmailRecipientResolver],
 })
 export class MailModule {}

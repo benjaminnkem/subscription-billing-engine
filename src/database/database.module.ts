@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiKey } from 'src/api-keys/entities/api-key.entity';
+import { AuditLog } from 'src/audit/entities/audit-log.entity';
+import { User } from 'src/auth/entities/user.entity';
+import { Merchant } from 'src/merchants/entities/merchant.entity';
 
-const entities = [];
+const entities = [User, Merchant, AuditLog, ApiKey];
 
 @Module({
   imports: [
