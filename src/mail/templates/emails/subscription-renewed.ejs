@@ -1,0 +1,11 @@
+<%- include('../partials/header', { title: 'Subscription renewed', appName }) %>
+<p class="text-body">Hi <span class="text-strong"><%= customerName %></span>,</p>
+<p class="text-body">
+  Your subscription to <strong><%= planName %></strong> has been renewed successfully.
+</p>
+<% if (amount) { %>
+<p class="text-body">
+  Amount charged: <span class="badge"><%= amount %></span>
+</p>
+<% } %>
+<%- include('../partials/footer', { appName }) %>

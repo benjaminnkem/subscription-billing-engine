@@ -1,0 +1,14 @@
+<%- include('../partials/header', { title: 'Complete your subscription', appName }) %>
+<p class="text-body">Hi <span class="text-strong"><%= customerName %></span>,</p>
+<p class="text-body">
+  Your subscription to <strong><%= planName %></strong> has been created and is waiting for payment.
+</p>
+<% if (amount) { %>
+<p class="text-body">
+  Amount due: <span class="badge"><%= amount %></span>
+</p>
+<% } %>
+<p class="text-body text-muted">
+  Please complete checkout to activate your subscription.
+</p>
+<%- include('../partials/footer', { appName }) %>

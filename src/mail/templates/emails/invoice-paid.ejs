@@ -1,0 +1,11 @@
+<%- include('../partials/header', { title: 'Payment received', appName }) %>
+<p class="text-body">Hi <span class="text-strong"><%= customerName %></span>,</p>
+<p class="text-body">
+  We received your payment<% if (invoiceNumber) { %> for invoice <strong><%= invoiceNumber %></strong><% } %>.
+</p>
+<% if (amount) { %>
+<p class="text-body">
+  Amount paid: <span class="badge"><%= amount %></span>
+</p>
+<% } %>
+<%- include('../partials/footer', { appName }) %>

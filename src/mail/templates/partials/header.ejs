@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <%- include('./styles') %>
+  </head>
+  <body class="email-body">
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      class="email-shell"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            class="email-card"
+          >
+            <tr>
+              <td class="email-brand">
+                <span class="email-logo">S</span>
+                <p class="email-app-name"><%= appName %></p>
+                <p class="email-app-tagline">Merchant Dashboard</p>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="email-divider"></div>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-hero">
+                <h1 class="email-title"><%= title %></h1>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-content">

@@ -1,0 +1,250 @@
+<meta name="color-scheme" content="light dark" />
+<meta name="supported-color-schemes" content="light dark" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+
+  body,
+  table,
+  td,
+  p,
+  a,
+  h1,
+  h2,
+  h3 {
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+  }
+
+  .email-body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: #fafafa !important;
+    color: #18181b !important;
+  }
+
+  .email-shell {
+    background-color: #fafafa !important;
+    padding: 40px 16px !important;
+  }
+
+  .email-card {
+    max-width: 560px !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e4e4e7 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 40px rgba(24, 24, 27, 0.06) !important;
+  }
+
+  .email-brand {
+    padding: 32px 32px 20px !important;
+    text-align: center !important;
+  }
+
+  .email-logo {
+    display: inline-block !important;
+    width: 48px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+    border-radius: 16px !important;
+    background-color: #e3b341 !important;
+    color: #422006 !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    box-shadow: 0 10px 24px rgba(227, 179, 65, 0.28) !important;
+  }
+
+  .email-app-name {
+    margin: 16px 0 4px !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: #18181b !important;
+  }
+
+  .email-app-tagline {
+    margin: 0 !important;
+    font-size: 13px !important;
+    color: #71717a !important;
+  }
+
+  .email-divider {
+    height: 1px !important;
+    background-color: #e4e4e7 !important;
+    margin: 0 32px !important;
+  }
+
+  .email-hero {
+    padding: 28px 32px 8px !important;
+    text-align: center !important;
+  }
+
+  .email-title {
+    margin: 0 !important;
+    font-size: 24px !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: #18181b !important;
+  }
+
+  .email-content {
+    padding: 20px 32px 32px !important;
+    color: #18181b !important;
+  }
+
+  .text-body {
+    margin: 0 0 16px !important;
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+    color: #3f3f46 !important;
+  }
+
+  .text-body:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  .text-muted {
+    color: #71717a !important;
+  }
+
+  .text-strong,
+  .text-body strong {
+    color: #18181b !important;
+    font-weight: 600 !important;
+  }
+
+  .text-danger {
+    color: #dc2626 !important;
+  }
+
+  .badge {
+    display: inline-block !important;
+    padding: 6px 10px !important;
+    border-radius: 999px !important;
+    background-color: #fef9c3 !important;
+    color: #854d0e !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+  }
+
+  .btn-primary {
+    display: inline-block !important;
+    padding: 12px 22px !important;
+    border-radius: 10px !important;
+    background-color: #e3b341 !important;
+    color: #422006 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    box-shadow: 0 10px 24px rgba(227, 179, 65, 0.24) !important;
+  }
+
+  .link-secondary {
+    color: #71717a !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    text-decoration: underline !important;
+  }
+
+  .link-divider {
+    color: #d4d4d8 !important;
+    padding: 0 8px !important;
+  }
+
+  .email-footer {
+    padding: 20px 32px 28px !important;
+    border-top: 1px solid #e4e4e7 !important;
+    background-color: #fafafa !important;
+    text-align: center !important;
+  }
+
+  .email-footer p {
+    margin: 0 !important;
+    font-size: 12px !important;
+    line-height: 1.6 !important;
+    color: #71717a !important;
+  }
+
+  .email-footer p + p {
+    margin-top: 8px !important;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .email-body {
+      background-color: #09090b !important;
+      color: #fafafa !important;
+    }
+
+    .email-shell,
+    .email-footer {
+      background-color: #09090b !important;
+    }
+
+    .email-card {
+      background-color: #27272a !important;
+      border-color: #3f3f46 !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    .email-logo {
+      background-color: #facc15 !important;
+      color: #422006 !important;
+      box-shadow: 0 10px 24px rgba(250, 204, 21, 0.18) !important;
+    }
+
+    .email-app-name,
+    .email-title,
+    .text-strong,
+    .text-body strong {
+      color: #fafafa !important;
+    }
+
+    .email-app-tagline,
+    .text-body,
+    .text-muted,
+    .email-footer p {
+      color: #a1a1aa !important;
+    }
+
+    .email-divider,
+    .email-footer {
+      border-top-color: #3f3f46 !important;
+    }
+
+    .email-divider {
+      background-color: #3f3f46 !important;
+    }
+
+    .badge {
+      background-color: rgba(250, 204, 21, 0.14) !important;
+      color: #fde68a !important;
+    }
+
+    .btn-primary {
+      background-color: #facc15 !important;
+      color: #422006 !important;
+    }
+
+    .link-secondary {
+      color: #a1a1aa !important;
+    }
+
+    .link-divider {
+      color: #52525b !important;
+    }
+
+    .text-danger {
+      color: #f87171 !important;
+    }
+  }
+</style>

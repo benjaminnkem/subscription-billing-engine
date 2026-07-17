@@ -1,0 +1,26 @@
+<%- include('../partials/header', { title: 'Payment failed', appName }) %>
+<p class="text-body">Hi <span class="text-strong"><%= customerName %></span>,</p>
+<p class="text-body">
+  We were unable to process your payment<% if (amount) { %> of <span class="badge"><%= amount %></span><% } %>.
+</p>
+<% if (failureReason) { %>
+<p class="text-body text-danger">
+  Reason: <%= failureReason %>
+</p>
+<% } %>
+<% if (retryUrl) { %>
+<p class="text-body" style="text-align:center;padding:8px 0 4px;">
+  <a href="<%= retryUrl %>" class="btn-primary">Retry payment</a>
+</p>
+<p class="text-body" style="text-align:center;font-size:13px;">
+  <a href="<%= pauseUrl %>" class="link-secondary">Pause subscription</a><span class="link-divider">|</span><a href="<%= cancelUrl %>" class="link-secondary">Cancel subscription</a>
+</p>
+<p class="text-body text-muted" style="font-size:13px;">
+  These links are single-use and expire in 7 days.
+</p>
+<% } else { %>
+<p class="text-body text-muted">
+  Please update your payment method to keep your subscription active.
+</p>
+<% } %>
+<%- include('../partials/footer', { appName }) %>

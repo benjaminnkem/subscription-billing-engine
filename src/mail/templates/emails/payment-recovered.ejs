@@ -1,0 +1,9 @@
+<%- include('../partials/header', { title: 'Payment recovered', appName }) %>
+<p class="text-body">Hi <span class="text-strong"><%= customerName %></span>,</p>
+<p class="text-body">
+  Good news — your payment<% if (amount) { %> of <span class="badge"><%= amount %></span><% } %> was processed successfully.
+</p>
+<p class="text-body text-muted">
+  Your subscription remains active.
+</p>
+<%- include('../partials/footer', { appName }) %>
