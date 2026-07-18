@@ -25,6 +25,7 @@ import { BillingModule } from './billing/billing.module';
 import { DunningModule } from './dunning/dunning.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { MailModule } from './mail/mail.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -49,6 +50,8 @@ import { MailModule } from './mail/mail.module';
     AuditModule,
     NotificationsModule,
     EventsModule,
+
+    AnalyticsModule,
 
     // Billing domain
     CustomersModule,
