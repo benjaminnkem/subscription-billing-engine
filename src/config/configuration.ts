@@ -30,12 +30,23 @@ export default () => ({
     key: process.env.ENCRYPTION_KEY ?? 'dev-encryption-key-32-bytes-long!',
   },
   monnify: {
-    apiUrl: process.env.MONNIFY_API_URL ?? 'https://api.monnify.com',
-    accountId: process.env.MONNIFY_ACCOUNT_ID ?? '',
-    subAccountId: process.env.MONNIFY_SUB_ACCOUNT_ID ?? '',
-    clientId: process.env.MONNIFY_CLIENT_ID ?? '',
-    clientSecret: process.env.MONNIFY_CLIENT_SECRET ?? '',
-    webhookSecret: process.env.MONNIFY_WEBHOOK_SECRET ?? '',
+    // Sandbox: https://sandbox.monnify.com | Live: https://api.monnify.com
+    apiUrl: process.env.MONNIFY_API_URL ?? 'https://sandbox.monnify.com',
+    apiKey: process.env.MONNIFY_API_KEY ?? '',
+    // Secret key used for Basic auth login + webhook signature verification
+    secretKey:
+      process.env.MONNIFY_SECRET_KEY ??
+      process.env.MONNIFY_CLIENT_SECRET ??
+      '',
+    // Required for init-transaction and charge-card-token
+    contractCode: process.env.MONNIFY_CONTRACT_CODE ?? '',
+    // Optional override; defaults to secretKey for monnify-signature checks
+    webhookSecret:
+      process.env.MONNIFY_WEBHOOK_SECRET ??
+      process.env.MONNIFY_SECRET_KEY ??
+      process.env.MONNIFY_CLIENT_SECRET ??
+      '',
+    subAccountCode: process.env.MONNIFY_SUB_ACCOUNT_ID ?? '',
   },
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',

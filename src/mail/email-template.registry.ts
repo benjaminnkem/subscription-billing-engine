@@ -75,7 +75,7 @@ export class EmailTemplateRegistry {
   }): EmailTemplateDefinition {
     return {
       template: 'emails/welcome-merchant',
-      subject: 'Welcome to Nomba!',
+      subject: 'Welcome to Subflow!',
       context,
     };
   }

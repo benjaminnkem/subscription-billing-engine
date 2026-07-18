@@ -10,6 +10,7 @@ import * as winston from 'winston';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
+    rawBody: true, // required for Monnify monnify-signature verification
     logger: WinstonModule.createLogger({
       transports: [
         new winston.transports.Console({

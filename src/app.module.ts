@@ -15,6 +15,16 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { QueuesModule } from './queues/queues.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { EventsModule } from './events/events.module';
+import { CustomersModule } from './customers/customers.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { PaymentsModule } from './payments/payments.module';
+import { MonnifyWebhooksModule } from './payments/monnify-webhooks.module';
+import { BillingModule } from './billing/billing.module';
+import { DunningModule } from './dunning/dunning.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -30,6 +40,7 @@ import { EventsModule } from './events/events.module';
     RedisModule,
     QueuesModule,
     ScheduleModule.forRoot(),
+    MailModule,
 
     HealthModule,
     AuthModule,
@@ -38,6 +49,17 @@ import { EventsModule } from './events/events.module';
     AuditModule,
     NotificationsModule,
     EventsModule,
+
+    // Billing domain
+    CustomersModule,
+    PlansModule,
+    SubscriptionsModule,
+    InvoicesModule,
+    PaymentsModule,
+    MonnifyWebhooksModule,
+    BillingModule,
+    DunningModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
