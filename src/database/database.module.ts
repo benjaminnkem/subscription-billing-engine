@@ -1,40 +1,44 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiKey } from 'src/api-keys/entities/api-key.entity';
-import { AuditLog } from 'src/audit/entities/audit-log.entity';
-import { User } from 'src/auth/entities/user.entity';
-import { Customer } from 'src/customers/entities/customer.entity';
-import { EventStore } from 'src/events/entities/event-store.entity';
-import { InvoiceItem } from 'src/invoices/entities/invoice-item.entity';
-import { Invoice } from 'src/invoices/entities/invoice.entity';
-import { Merchant } from 'src/merchants/entities/merchant.entity';
-import { Notification } from 'src/notifications/entities/notification.entity';
-import { MonnifyWebhookEvent } from 'src/payments/entities/monnify-webhook-event.entity';
-import { PaymentAttempt } from 'src/payments/entities/payment-attempt.entity';
-import { Payment } from 'src/payments/entities/payment.entity';
-import { Plan } from 'src/plans/entities/plan.entity';
-import { Subscription } from 'src/subscriptions/entities/subscription.entity';
-import { WebhookDelivery } from 'src/webhooks/entities/webhook-delivery.entity';
-import { Webhook } from 'src/webhooks/entities/webhook.entity';
+import { ApiKey } from '../api-keys/entities/api-key.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
+import { Customer } from '../customers/entities/customer.entity';
+import { EventStore } from '../events/entities/event-store.entity';
+import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
+import { Merchant } from '../merchants/entities/merchant.entity';
+import { Notification } from '../notifications/entities/notification.entity';
+import { MonnifyWebhookEvent } from '../payments/entities/monnify-webhook-event.entity';
+import { PaymentAttempt } from '../payments/entities/payment-attempt.entity';
+import { Payment } from '../payments/entities/payment.entity';
+import { Plan } from '../plans/entities/plan.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { User } from '../auth/entities/user.entity';
+import { WebhookDelivery } from '../webhooks/entities/webhook-delivery.entity';
+import { IncomingRequestLog } from '../service-info/entities/incoming-request-log.entity';
+import { Webhook } from '../webhooks/entities/webhook.entity';
+import { PortalSession } from '../portal/entities/portal-session.entity';
 
 const entities = [
   User,
   Merchant,
-  AuditLog,
   ApiKey,
-  Customer,
   Plan,
+  Customer,
   Subscription,
   Invoice,
   InvoiceItem,
   Payment,
   PaymentAttempt,
   MonnifyWebhookEvent,
-  Notification,
-  EventStore,
   Webhook,
   WebhookDelivery,
+  AuditLog,
+  Notification,
+  EventStore,
+  IncomingRequestLog,
+  PortalSession,
 ];
 
 @Module({

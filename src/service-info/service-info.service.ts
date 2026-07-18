@@ -49,6 +49,7 @@ export class ServiceInfoService {
         userAgent: input.userAgent,
         headers: input.headers,
         signature: input.signature,
+        monnifyTimestamp: input.monnifyTimestamp,
         body: input.body,
         statusCode: input.statusCode,
       }),
@@ -65,6 +66,7 @@ export class ServiceInfoService {
         `ip=${input.ipAddress ?? 'unknown'}`,
         `agent=${input.userAgent ?? 'unknown'}`,
         `signature=${input.signature ?? 'none'}`,
+        `timestamp=${input.monnifyTimestamp ?? 'none'}`,
         `status=${input.statusCode ?? 'pending'}`,
       ].join(' | '),
     );
@@ -92,13 +94,14 @@ export class ServiceInfoService {
 
     return {
       serviceName:
-        this.config.get<string>('appName') ?? 'Monnify Subscription Engine',
+        this.config.get<string>('appName') ?? 'Subflow',
       environment: this.config.get<string>('nodeEnv') ?? 'development',
       serverTime: new Date().toISOString(),
       nodeVersion: process.version,
       monnifyWebhookUrl: `${baseUrl}/webhooks/monnify`,
       webhookSecretConfigured: Boolean(
-        this.config.get<string>('monnify.webhookSecret'),
+        this.config.get<string>('monnify.webhookSecret') ||
+          this.config.get<string>('monnify.secretKey'),
       ),
       monnifyApiUrl: this.config.get<string>('monnify.apiUrl') ?? '',
     };

@@ -33,20 +33,11 @@ export default () => ({
     // Sandbox: https://sandbox.monnify.com | Live: https://api.monnify.com
     apiUrl: process.env.MONNIFY_API_URL ?? 'https://sandbox.monnify.com',
     apiKey: process.env.MONNIFY_API_KEY ?? '',
-    // Secret key used for Basic auth login + webhook signature verification
-    secretKey:
-      process.env.MONNIFY_SECRET_KEY ??
-      process.env.MONNIFY_CLIENT_SECRET ??
-      '',
-    // Required for init-transaction and charge-card-token
+    secretKey: process.env.MONNIFY_SECRET_KEY ?? '',
     contractCode: process.env.MONNIFY_CONTRACT_CODE ?? '',
-    // Optional override; defaults to secretKey for monnify-signature checks
-    webhookSecret:
-      process.env.MONNIFY_WEBHOOK_SECRET ??
-      process.env.MONNIFY_SECRET_KEY ??
-      process.env.MONNIFY_CLIENT_SECRET ??
-      '',
-    subAccountCode: process.env.MONNIFY_SUB_ACCOUNT_ID ?? '',
+    // Used for monnify-signature verification; falls back to secretKey when unset
+    webhookSecret: process.env.MONNIFY_WEBHOOK_SECRET ?? '',
+    subAccountId: process.env.MONNIFY_SUB_ACCOUNT_ID ?? '',
   },
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
@@ -55,9 +46,9 @@ export default () => ({
     smsFrom: process.env.TWILIO_SMS_FROM ?? '',
   },
   cors: {
-    origins: (process.env.CORS_ORIGINS ?? 'http://localhost:3340').split(','),
+    origins: (process.env.CORS_ORIGINS ?? 'http://localhost:3000').split(','),
   },
-  dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:3340',
+  dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:3000',
   appUrl:
     process.env.APP_URL ?? `http://localhost:${process.env.PORT ?? '3000'}`,
   mail: {

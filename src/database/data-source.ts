@@ -12,5 +12,5 @@ export default new DataSource({
   database: process.env.DB_NAME ?? 'monnify_subscriptions',
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/database/migrations/*.ts'],
-  synchronize: true,
+  synchronize: false,
 });

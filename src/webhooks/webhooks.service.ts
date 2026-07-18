@@ -1,9 +1,12 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ChaosService } from '../chaos/chaos.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { Repository } from 'typeorm';
+import { DOMAIN_EVENTS } from '../events/domain-events';
 import { EventStore } from '../events/entities/event-store.entity';
+import { EventsService } from '../events/events.service';
 import { QUEUE_NAMES } from '../queues/queue.constants';
 import { WebhookDeliveryStatus, WebhookEventType } from '../shared/enums';
 import { generateRandomToken, signHmacSha256 } from '../shared/utils';
@@ -30,6 +33,8 @@ export class WebhooksService {
     @InjectRepository(WebhookDelivery)
     private deliveryRepo: Repository<WebhookDelivery>,
     @InjectQueue(QUEUE_NAMES.WEBHOOKS) private webhooksQueue: Queue,
+    private eventsService: EventsService,
+    private chaosService: ChaosService,
   ) {}
 
   async create(merchantId: string, dto: CreateWebhookDto): Promise<Webhook> {
@@ -62,6 +67,19 @@ export class WebhooksService {
     });
   }
 
+  async replay(
+    merchantId: string,
+    filters: { subscriptionId?: string; from?: string; to?: string },
+  ): Promise<{ eventsMatched: number }> {
+    const events = await this.eventsService.findForReplay(merchantId, filters);
+
+    for (const event of events) {
+      await this.dispatchForEvent(event);
+    }
+
+    return { eventsMatched: events.length };
+  }
+
   async dispatchForEvent(event: EventStore): Promise<void> {
     const eventType = EVENT_TYPE_MAP[event.eventType];
     if (!eventType) return;
@@ -82,6 +100,7 @@ export class WebhooksService {
           type: eventType,
           data: event.payload,
           createdAt: event.createdAt,
+          correlationId: event.correlationId,
         },
         status: WebhookDeliveryStatus.PENDING,
       });
@@ -111,6 +130,15 @@ export class WebhooksService {
     const timestamp = Date.now().toString();
 
     try {
+      if (await this.chaosService.shouldFailWebhook(delivery.merchantId)) {
+        delivery.attemptCount += 1;
+        delivery.responseStatusCode = 500;
+        delivery.responseBody = 'Chaos injected webhook failure';
+        await this.scheduleRetry(delivery);
+        await this.deliveryRepo.save(delivery);
+        return;
+      }
+
       const response = await fetch(webhook.url, {
         method: 'POST',
         headers: {
@@ -129,6 +157,22 @@ export class WebhooksService {
       if (response.ok) {
         delivery.status = WebhookDeliveryStatus.DELIVERED;
         delivery.deliveredAt = new Date();
+
+        const sourceCorrelationId = (
+          delivery.payload as { correlationId?: string }
+        ).correlationId;
+
+        await this.eventsService.emit(DOMAIN_EVENTS.WEBHOOK_SENT, {
+          merchantId: delivery.merchantId,
+          aggregateType: 'webhook',
+          aggregateId: delivery.id,
+          correlationId: sourceCorrelationId,
+          data: {
+            webhookId: delivery.webhookId,
+            webhookEventType: delivery.eventType,
+            responseStatusCode: delivery.responseStatusCode,
+          },
+        });
       } else {
         await this.scheduleRetry(delivery);
       }

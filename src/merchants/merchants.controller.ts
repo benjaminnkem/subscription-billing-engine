@@ -26,4 +26,17 @@ export class MerchantsController {
   ) {
     return this.merchantsService.update(merchantId, dto);
   }
+
+  @Get('banks')
+  @ApiOperation({ summary: 'Get all supported Nigerian banks' })
+  getBanks() {
+    return this.merchantsService.getBanks();
+  }
+
+  @Post('bank/lookup')
+  @ApiOperation({ summary: 'Verify a bank account number' })
+  @ApiBody({ type: AccountLookupDto })
+  lookupAccount(@Body() dto: AccountLookupDto) {
+    return this.merchantsService.lookupAccount(dto.accountNumber, dto.bankCode);
+  }
 }

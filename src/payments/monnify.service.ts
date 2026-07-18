@@ -50,6 +50,20 @@ export interface MonnifyTransactionStatus {
   raw?: Record<string, unknown>;
 }
 
+export interface MonnifyBank {
+  name: string;
+  code: string;
+  ussdTemplate?: string | null;
+  baseUssdCode?: string | null;
+  transferUssdTemplate?: string | null;
+}
+
+export interface MonnifyAccountLookupResult {
+  accountNumber: string;
+  accountName: string;
+  bankCode: string;
+}
+
 interface CachedAccessToken {
   accessToken: string;
   expiresAt: number;
@@ -59,7 +73,7 @@ interface MonnifyApiEnvelope {
   requestSuccessful?: boolean;
   responseMessage?: string;
   responseCode?: string;
-  responseBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown> | unknown[];
 }
 
 const TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
@@ -105,7 +119,7 @@ export class MonnifyService {
         paymentReference,
       );
 
-      const body = response.data?.responseBody ?? {};
+      const body = this.asObjectBody(response.data?.responseBody);
       const transactionReference =
         (body.transactionReference as string | undefined) ??
         (body.transaction_reference as string | undefined);
@@ -120,9 +134,9 @@ export class MonnifyService {
         paymentReference,
         failureReason: success
           ? undefined
-          : response.data?.responseMessage ??
+          : (response.data?.responseMessage ??
             (body.message as string | undefined) ??
-            'Tokenized charge failed',
+            'Tokenized charge failed'),
         raw: response.data as unknown as Record<string, unknown>,
       };
     } catch (error) {
@@ -175,11 +189,10 @@ export class MonnifyService {
         request.paymentReference,
       );
 
-      const body = response.data?.responseBody ?? {};
+      const body = this.asObjectBody(response.data?.responseBody);
       const checkoutUrl = body.checkoutUrl as string | undefined;
       const transactionReference = body.transactionReference as
-        | string
-        | undefined;
+        string | undefined;
       const paymentReference =
         (body.paymentReference as string | undefined) ??
         request.paymentReference;
@@ -195,8 +208,8 @@ export class MonnifyService {
         paymentReference,
         failureReason: success
           ? undefined
-          : response.data?.responseMessage ??
-            'Checkout session creation failed',
+          : (response.data?.responseMessage ??
+            'Checkout session creation failed'),
         raw: response.data as unknown as Record<string, unknown>,
       };
     } catch (error) {
@@ -209,6 +222,95 @@ export class MonnifyService {
         failureReason: 'Payment gateway unavailable',
       };
     }
+  }
+
+  async fetchBanks(): Promise<MonnifyBank[]> {
+    if (!this.isConfigured()) {
+      this.logger.warn(
+        'Monnify credentials not configured — returning empty bank list',
+      );
+      return [];
+    }
+
+    try {
+      const response = await this.request<MonnifyApiEnvelope>(
+        'GET',
+        '/api/v1/sdk/transactions/banks',
+        undefined,
+        'banks',
+      );
+
+      const body = response.data?.responseBody;
+      if (
+        !response.ok ||
+        !response.data?.requestSuccessful ||
+        !Array.isArray(body)
+      ) {
+        this.logger.warn(
+          { message: response.data?.responseMessage },
+          'Monnify bank list request failed',
+        );
+        return [];
+      }
+
+      return body.map((bank) => {
+        const item = bank as Record<string, unknown>;
+        return {
+          name: String(item.name ?? item.bankName ?? ''),
+          code: String(item.code ?? item.bankCode ?? ''),
+          ussdTemplate:
+            (item.ussdTemplate as string | null | undefined) ?? null,
+          baseUssdCode:
+            (item.baseUssdCode as string | null | undefined) ?? null,
+          transferUssdTemplate:
+            (item.transferUssdTemplate as string | null | undefined) ?? null,
+        };
+      });
+    } catch (error) {
+      this.logger.error({ error }, 'Monnify fetchBanks failed');
+      return [];
+    }
+  }
+
+  async lookupAccount(
+    accountNumber: string,
+    bankCode: string,
+  ): Promise<MonnifyAccountLookupResult> {
+    if (!this.isConfigured()) {
+      this.logger.warn(
+        'Monnify credentials not configured — simulating account lookup',
+      );
+      return {
+        accountNumber,
+        accountName: 'SIMULATED ACCOUNT NAME',
+        bankCode,
+      };
+    }
+
+    const params = new URLSearchParams({
+      accountNumber,
+      bankCode,
+    });
+
+    const response = await this.request<MonnifyApiEnvelope>(
+      'GET',
+      `/api/v1/disbursements/account/validate?${params.toString()}`,
+      undefined,
+      accountNumber,
+    );
+
+    const body = this.asObjectBody(response.data?.responseBody);
+    if (!response.ok || !response.data?.requestSuccessful) {
+      throw new Error(
+        response.data?.responseMessage ?? 'Account lookup failed',
+      );
+    }
+
+    return {
+      accountNumber: String(body.accountNumber ?? accountNumber),
+      accountName: String(body.accountName ?? ''),
+      bankCode: String(body.bankCode ?? bankCode),
+    };
   }
 
   async getTransactionStatus(options: {
@@ -235,10 +337,9 @@ export class MonnifyService {
         options.paymentReference ?? options.transactionReference ?? 'status',
       );
 
-      const body = response.data?.responseBody ?? {};
+      const body = this.asObjectBody(response.data?.responseBody);
       const cardDetails = (body.cardDetails ?? {}) as Record<string, unknown>;
-      const success =
-        response.ok && response.data?.requestSuccessful === true;
+      const success = response.ok && response.data?.requestSuccessful === true;
 
       return {
         success,
@@ -260,8 +361,9 @@ export class MonnifyService {
   private isConfigured(): boolean {
     return Boolean(
       this.config.get<string>('monnify.apiKey') &&
-        this.config.get<string>('monnify.secretKey') &&
-        this.config.get<string>('monnify.contractCode'),
+      this.config.get<string>('monnify.secretKey'),
+      // &&
+      // this.config.get<string>('monnify.contractCode'),
     );
   }
 
@@ -287,8 +389,9 @@ export class MonnifyService {
     });
 
     const body = (await response.json()) as MonnifyApiEnvelope;
-    const accessToken = body.responseBody?.accessToken as string | undefined;
-    const expiresIn = (body.responseBody?.expiresIn as number | undefined) ?? 3600;
+    const tokenBody = this.asObjectBody(body.responseBody);
+    const accessToken = tokenBody.accessToken as string | undefined;
+    const expiresIn = (tokenBody.expiresIn as number | undefined) ?? 3600;
 
     if (!response.ok || !body.requestSuccessful || !accessToken) {
       throw new Error(
@@ -362,6 +465,19 @@ export class MonnifyService {
       return true;
     }
     const normalized = status.toUpperCase();
-    return normalized === 'PAID' || normalized === 'SUCCESS' || normalized === 'SUCCESSFUL';
+    return (
+      normalized === 'PAID' ||
+      normalized === 'SUCCESS' ||
+      normalized === 'SUCCESSFUL'
+    );
+  }
+
+  private asObjectBody(
+    body: MonnifyApiEnvelope['responseBody'],
+  ): Record<string, unknown> {
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      return body;
+    }
+    return {};
   }
 }

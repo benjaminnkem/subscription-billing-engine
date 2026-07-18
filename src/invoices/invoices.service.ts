@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { InvoiceStatus } from '../shared/enums';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { Invoice } from './entities/invoice.entity';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 export interface CreateInvoiceInput {
   merchantId: string;
@@ -61,18 +62,24 @@ export class InvoicesService {
     return this.invoiceRepo.save(invoice);
   }
 
-  async findAll(merchantId: string): Promise<Invoice[]> {
-    return this.invoiceRepo.find({
+  async findAll(
+    merchantId: string,
+    { page = 1, limit = 20 }: PaginationDto,
+  ): Promise<{ data: Invoice[]; total: number }> {
+    const [data, total] = await this.invoiceRepo.findAndCount({
       where: { merchantId },
-      relations: { items: true },
+      relations: { items: true, customer: true },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return { data, total };
   }
 
   async findOne(merchantId: string, id: string): Promise<Invoice> {
     const invoice = await this.invoiceRepo.findOne({
       where: { id, merchantId },
-      relations: { items: true },
+      relations: { items: true, customer: true },
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
     return invoice;

@@ -8,11 +8,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from './entities/merchant.entity';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
+import { MonnifyService } from '../payments/monnify.service';
 
 @Injectable()
 export class MerchantsService {
   constructor(
     @InjectRepository(Merchant) private merchantRepo: Repository<Merchant>,
+    @Inject(forwardRef(() => MonnifyService))
+    private monnifyService: MonnifyService,
   ) {}
 
   async findOne(id: string): Promise<Merchant> {
@@ -42,5 +45,13 @@ export class MerchantsService {
       merchant.customerPortalSettings = dto.customerPortalSettings;
 
     return this.merchantRepo.save(merchant);
+  }
+
+  async getBanks() {
+    return this.monnifyService.fetchBanks();
+  }
+
+  async lookupAccount(accountNumber: string, bankCode: string) {
+    return this.monnifyService.lookupAccount(accountNumber, bankCode);
   }
 }

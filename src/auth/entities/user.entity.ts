@@ -51,9 +51,7 @@ export class User {
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deletedAt?: Date | null;
 
-  @ManyToOne(() => Merchant, (merchant) => merchant.users, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => Merchant, (merchant) => merchant.users)
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;
 }

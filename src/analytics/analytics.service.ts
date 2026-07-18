@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Customer } from '../customers/entities/customer.entity';
+import { DOMAIN_EVENTS } from '../events/domain-events';
 import { EventStore } from '../events/entities/event-store.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { PaymentAttempt } from '../payments/entities/payment-attempt.entity';
@@ -24,6 +25,7 @@ import {
   DunningAnalytics,
   PaymentAnalytics,
   PlanAnalytics,
+  RecoveryByChannel,
   RevenueTrendPoint,
   SubscriptionTrendPoint,
   TopCustomer,
@@ -377,6 +379,7 @@ export class AnalyticsService {
       dunningStats,
       recoveredAfterDunning,
       cancelledAfterDunning,
+      recoveryByChannel,
     ] = await Promise.all([
       this.getSubscriptionStatusCounts(merchantId),
       this.getDunningStats(merchantId),
@@ -394,6 +397,7 @@ export class AnalyticsService {
           status: SubscriptionStatus.CANCELLED,
         })
         .getCount(),
+      this.getRecoveryByChannel(merchantId),
     ]);
 
     return {
@@ -404,6 +408,7 @@ export class AnalyticsService {
       maxDunningAttempts: dunningStats.maxAttempts,
       recoveredAfterDunning,
       cancelledAfterDunning,
+      recoveryByChannel,
     };
   }
 
@@ -656,6 +661,38 @@ export class AnalyticsService {
       averageAttempts: round(parseAmount(row?.averageAttempts)),
       maxAttempts: parseInt(row?.maxAttempts ?? '0', 10) || 0,
     };
+  }
+
+  private async getRecoveryByChannel(
+    merchantId: string,
+  ): Promise<RecoveryByChannel> {
+    const rows = await this.eventStoreRepo
+      .createQueryBuilder('e')
+      .select("COALESCE(e.payload->>'recoveredVia', 'automatic')", 'channel')
+      .addSelect('COUNT(*)', 'count')
+      .where('e.merchantId = :merchantId', { merchantId })
+      .andWhere('e.eventType = :eventType', {
+        eventType: DOMAIN_EVENTS.PAYMENT_RECOVERED,
+      })
+      .groupBy("COALESCE(e.payload->>'recoveredVia', 'automatic')")
+      .getRawMany<{ channel: string; count: string }>();
+
+    const result: RecoveryByChannel = {
+      automatic: 0,
+      whatsapp: 0,
+      sms: 0,
+      email: 0,
+      ussd: 0,
+    };
+
+    for (const row of rows) {
+      if (row.channel in result) {
+        result[row.channel as keyof RecoveryByChannel] =
+          parseInt(row.count, 10) || 0;
+      }
+    }
+
+    return result;
   }
 
   private async getTrialConversionRate(merchantId: string, since: Date) {

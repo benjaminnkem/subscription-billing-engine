@@ -28,11 +28,8 @@ export class ServiceInfoMiddleware implements NestMiddleware {
           statusCode: response.statusCode,
         })
         .catch((error: unknown) => {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          this.logger.warn(
-            `Failed to persist incoming request log: ${message}`,
-          );
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`Failed to persist incoming request log: ${message}`);
         });
     });
 

@@ -3,13 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProrationService } from '../billing/proration.service';
 import { CustomersService } from '../customers/customers.service';
+import { generateCorrelationId } from '../events/correlation.util';
 import { DOMAIN_EVENTS } from '../events/domain-events';
 import { EventsService } from '../events/events.service';
+import { InvoicesService } from '../invoices/invoices.service';
+import { PaymentsService } from '../payments/payments.service';
 import { PlansService } from '../plans/plans.service';
 import { AuditAction, SubscriptionStatus } from '../shared/enums';
 import { AuditService } from '../audit/audit.service';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { CreateSubscriptionResponseDto } from './dto/create-subscription-response.dto';
 import { Subscription } from './entities/subscription.entity';
 import { SubscriptionStateMachine } from './subscription-state.machine';
 
@@ -21,6 +25,8 @@ export class SubscriptionsService {
     private plansService: PlansService,
     private customersService: CustomersService,
     private prorationService: ProrationService,
+    private invoicesService: InvoicesService,
+    private paymentsService: PaymentsService,
     private eventsService: EventsService,
     private auditService: AuditService,
   ) {}
@@ -29,7 +35,7 @@ export class SubscriptionsService {
     merchantId: string,
     dto: CreateSubscriptionDto,
     actor: string,
-  ): Promise<Subscription> {
+  ): Promise<CreateSubscriptionResponseDto> {
     const [plan, customer] = await Promise.all([
       this.plansService.findOne(merchantId, dto.planId),
       this.customersService.findOne(merchantId, dto.customerId),
@@ -37,36 +43,58 @@ export class SubscriptionsService {
 
     const now = new Date();
 
-    const intervalDays = this.prorationService.getIntervalDays(
-      plan.interval,
-      plan.customIntervalDays,
-    );
-    const periodEnd = new Date(now.getTime() + intervalDays * 86400000);
-
-    let status = SubscriptionStatus.ACTIVE;
-    let trialEndsAt: Date | null = null;
-    if (plan.trialDays > 0) {
-      status = SubscriptionStatus.TRIALING;
-      trialEndsAt = new Date(now.getTime() + plan.trialDays * 86400000);
-    }
+    const correlationId = generateCorrelationId();
 
     const subscription = this.subscriptionRepo.create({
       merchantId,
       customerId: customer.id,
       planId: plan.id,
-      status,
-      trialEndsAt,
+      status: SubscriptionStatus.PENDING,
+      trialEndsAt: null,
       currentPeriodStart: now,
-      currentPeriodEnd: periodEnd,
+      currentPeriodEnd: now,
+      correlationId,
       metadata: dto.metadata,
     });
     const saved = await this.subscriptionRepo.save(subscription);
+
+    const hasTrial = plan.trialDays > 0;
+    const invoice = await this.invoicesService.create({
+      merchantId,
+      customerId: customer.id,
+      subscriptionId: saved.id,
+      items: [
+        {
+          description: hasTrial
+            ? `${plan.name} — payment method setup`
+            : `${plan.name} subscription`,
+          quantity: 1,
+          unitAmount: hasTrial ? 0 : parseFloat(plan.amount),
+        },
+      ],
+      currency: plan.currency,
+    });
+
+    const { checkoutUrl, paymentId } =
+      await this.paymentsService.createCheckout(merchantId, {
+        invoiceId: invoice.id,
+        callbackUrl: dto.callbackUrl,
+      });
+
+    await this.eventsService.emit(DOMAIN_EVENTS.INVOICE_GENERATED, {
+      merchantId,
+      aggregateType: 'invoice',
+      aggregateId: invoice.id,
+      correlationId,
+      data: { invoice, subscription: saved },
+    });
 
     await this.eventsService.emit(DOMAIN_EVENTS.SUBSCRIPTION_CREATED, {
       merchantId,
       aggregateType: 'subscription',
       aggregateId: saved.id,
-      data: { subscription: saved, customer, plan },
+      correlationId,
+      data: { subscription: saved, customer, plan, invoiceId: invoice.id },
     });
 
     await this.auditService.log({
@@ -77,7 +105,12 @@ export class SubscriptionsService {
       resourceId: saved.id,
     });
 
-    return saved;
+    return {
+      subscription: saved,
+      checkoutUrl,
+      paymentId,
+      invoiceId: invoice.id,
+    };
   }
 
   async findAll(merchantId: string): Promise<Subscription[]> {
@@ -149,6 +182,7 @@ export class SubscriptionsService {
       merchantId,
       aggregateType: 'subscription',
       aggregateId: updated.id,
+      correlationId: updated.correlationId ?? undefined,
       data: { subscription: updated },
     });
 
@@ -245,8 +279,10 @@ export class SubscriptionsService {
       merchantId,
       aggregateType: 'subscription',
       aggregateId: subscription.id,
+      correlationId: subscription.correlationId ?? undefined,
       data: { subscription },
     });
+
     await this.auditService.log({
       merchantId,
       actor,

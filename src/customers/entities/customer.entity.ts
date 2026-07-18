@@ -12,7 +12,6 @@ export class Customer extends BaseEntity {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone?: string;
 
-  /** Monnify card token for recurring charges (charge-card-token) */
   @Column({ type: 'varchar', length: 255, nullable: true })
   monnifyCardToken?: string;
 

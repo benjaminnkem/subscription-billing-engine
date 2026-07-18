@@ -3,10 +3,9 @@ import { SubscriptionStatus } from '../shared/enums';
 
 const ALLOWED_TRANSITIONS: Record<SubscriptionStatus, SubscriptionStatus[]> = {
   [SubscriptionStatus.PENDING]: [
-    SubscriptionStatus.TRIALING,
     SubscriptionStatus.ACTIVE,
+    SubscriptionStatus.TRIALING,
     SubscriptionStatus.CANCELLED,
-    SubscriptionStatus.EXPIRED,
   ],
   [SubscriptionStatus.TRIALING]: [
     SubscriptionStatus.ACTIVE,

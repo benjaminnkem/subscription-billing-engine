@@ -9,6 +9,8 @@ export interface RequestMetadata {
   userAgent?: string;
   headers: Record<string, string>;
   signature?: string;
+  /** Monnify does not send a dedicated timestamp header; kept for request logging. */
+  monnifyTimestamp?: string;
   body?: Record<string, unknown>;
 }
 
@@ -56,6 +58,8 @@ export function extractRequestMetadata(request: Request): RequestMetadata {
   const headers = sanitizeRequestHeaders(request.headers);
   const signature =
     headers['monnify-signature'] ?? headers['Monnify-Signature'];
+  const monnifyTimestamp =
+    headers['monnify-timestamp'] ?? headers['Monnify-Timestamp'];
 
   return {
     method: request.method,
@@ -64,6 +68,7 @@ export function extractRequestMetadata(request: Request): RequestMetadata {
     userAgent: headers['user-agent'],
     headers,
     signature,
+    monnifyTimestamp,
     body:
       request.body && typeof request.body === 'object'
         ? (request.body as Record<string, unknown>)

@@ -11,11 +11,11 @@ import {
 import { PlanInterval } from '../../shared/enums';
 
 export class CreatePlanDto {
-  @ApiProperty({ example: 'Monthly Premium Plan' })
+  @ApiProperty()
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Premium plan to access all features' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   description?: string;
@@ -30,11 +30,11 @@ export class CreatePlanDto {
   @IsString()
   currency?: string;
 
-  @ApiProperty({ enum: PlanInterval, example: PlanInterval.MONTHLY })
+  @ApiProperty({ enum: PlanInterval })
   @IsEnum(PlanInterval)
   interval: PlanInterval;
 
-  @ApiPropertyOptional({ default: 0, example: 0 })
+  @ApiPropertyOptional({ default: 0 })
   @IsOptional()
   @IsInt()
   @Min(0)

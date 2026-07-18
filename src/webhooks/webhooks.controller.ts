@@ -9,11 +9,13 @@ import {
 import { ApiWrappedResponse } from '../common/dto/api-response.dto';
 import { CurrentMerchant } from '../common/decorators/current-merchant.decorator';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
+import { ReplayWebhooksDto } from './dto/replay-webhooks.dto';
 import { WebhooksService } from './webhooks.service';
 import {
   WebhookResponseDto,
   WebhookListResponseDto,
   WebhookDeliveryListResponseDto,
+  ReplayWebhooksResponseDto,
 } from './dto/webhook-response.dto';
 
 @ApiTags('Webhooks')
@@ -58,5 +60,23 @@ export class WebhooksController {
     @Param('id') id: string,
   ) {
     return this.webhooksService.findDeliveries(merchantId, id);
+  }
+
+  @Post('replay')
+  @ApiOperation({
+    summary:
+      'Re-deliver past events by subscription ID or time range, sourced from the event store',
+  })
+  @ApiBody({ type: ReplayWebhooksDto })
+  @ApiWrappedResponse({
+    status: 200,
+    type: ReplayWebhooksResponseDto,
+    description: 'Number of matching events replayed',
+  })
+  replay(
+    @CurrentMerchant() merchantId: string,
+    @Body() dto: ReplayWebhooksDto,
+  ) {
+    return this.webhooksService.replay(merchantId, dto);
   }
 }

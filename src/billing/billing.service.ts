@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,10 +7,15 @@ import { EventsService } from '../events/events.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ProrationService } from './proration.service';
-import { PaymentStatus, SubscriptionStatus } from '../shared/enums';
+import {
+  PaymentStatus,
+  RecoveredViaChannel,
+  SubscriptionStatus,
+} from '../shared/enums';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { Plan } from '../plans/entities/plan.entity';
+import { DunningService } from '../dunning/dunning.service';
 
 @Injectable()
 export class BillingService {
@@ -25,6 +30,8 @@ export class BillingService {
     private paymentsService: PaymentsService,
     private prorationService: ProrationService,
     private eventsService: EventsService,
+    @Inject(forwardRef(() => DunningService))
+    private dunningService: DunningService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -45,7 +52,14 @@ export class BillingService {
     }
   }
 
-  async billSubscription(subscription: Subscription): Promise<void> {
+  async billSubscription(
+    subscription: Subscription,
+    recoveredVia?: RecoveredViaChannel,
+  ): Promise<void> {
+    const wasInDunning =
+      subscription.status === SubscriptionStatus.PAST_DUE ||
+      subscription.status === SubscriptionStatus.GRACE_PERIOD;
+
     const plan = await this.planRepo.findOne({
       where: { id: subscription.planId, merchantId: subscription.merchantId },
     });
@@ -99,6 +113,7 @@ export class BillingService {
         merchantId: subscription.merchantId,
         aggregateType: 'invoice',
         aggregateId: invoice.id,
+        correlationId: subscription.correlationId ?? undefined,
         data: { invoice, payment, subscription },
       });
 
@@ -106,14 +121,31 @@ export class BillingService {
         merchantId: subscription.merchantId,
         aggregateType: 'subscription',
         aggregateId: subscription.id,
+        correlationId: subscription.correlationId ?? undefined,
         data: { subscription, invoice },
       });
+
+      if (wasInDunning) {
+        await this.eventsService.emit(DOMAIN_EVENTS.PAYMENT_RECOVERED, {
+          merchantId: subscription.merchantId,
+          aggregateType: 'payment',
+          aggregateId: payment.id,
+          correlationId: subscription.correlationId ?? undefined,
+          data: {
+            payment,
+            invoice,
+            subscription,
+            recoveredVia: recoveredVia ?? RecoveredViaChannel.AUTOMATIC,
+          },
+        });
+      }
     } else {
       await this.invoicesService.markFailed(invoice);
       await this.subscriptionsService.transitionStatus(
         subscription,
         SubscriptionStatus.PAST_DUE,
       );
+      await this.dunningService.onPaymentFailed(subscription.id);
     }
   }
 }

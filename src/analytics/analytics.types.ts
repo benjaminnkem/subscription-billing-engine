@@ -91,6 +91,14 @@ export interface CustomerAnalytics {
   topCustomers: TopCustomer[];
 }
 
+export interface RecoveryByChannel {
+  automatic: number;
+  whatsapp: number;
+  sms: number;
+  email: number;
+  ussd: number;
+}
+
 export interface DunningAnalytics {
   pastDueSubscriptions: number;
   gracePeriodSubscriptions: number;
@@ -99,6 +107,7 @@ export interface DunningAnalytics {
   maxDunningAttempts: number;
   recoveredAfterDunning: number;
   cancelledAfterDunning: number;
+  recoveryByChannel: RecoveryByChannel;
 }
 
 export interface WebhookAnalytics {

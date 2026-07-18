@@ -80,3 +80,11 @@ export class WebhookDeliveryListResponseDto {
   @ApiProperty({ description: 'Total number of deliveries' })
   total: number;
 }
+
+export class ReplayWebhooksResponseDto {
+  @ApiProperty({
+    description:
+      'Number of events matched by the filters and re-dispatched to registered webhooks',
+  })
+  eventsMatched: number;
+}

@@ -62,7 +62,7 @@ describe('AuthService', () => {
     emailTemplateRegistryMock = {
       welcomeMerchant: jest.fn((context) => ({
         template: 'emails/welcome-merchant',
-        subject: 'Welcome to Monnify!',
+        subject: 'Welcome to Subflow!',
         context,
       })),
     };
@@ -146,7 +146,7 @@ describe('AuthService', () => {
         userName: 'John',
         businessName: 'Acme Corp',
       }),
-      'Welcome to Monnify!',
+      'Welcome to Subflow!',
     );
   });
 

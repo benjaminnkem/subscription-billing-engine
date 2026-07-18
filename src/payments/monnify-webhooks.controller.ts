@@ -42,6 +42,17 @@ export class MonnifyWebhooksController {
   ) {
     const rawBody = req.rawBody?.toString('utf8');
 
+    console.log('==========================================================');
+    console.log('Received Monnify Webhook');
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+    console.log('Headers:', {
+      'monnify-signature': signature,
+      'content-type': req.headers['content-type'],
+      rawBodyExists: rawBody !== undefined,
+      rawBodyLength: rawBody?.length,
+    });
+    console.log('==========================================================');
+
     return this.monnifyWebhooksService.process(payload, {
       signature,
       rawBody,

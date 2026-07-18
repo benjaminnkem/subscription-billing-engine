@@ -15,7 +15,7 @@ export class Subscription extends BaseEntity {
   @Column({
     type: 'enum',
     enum: SubscriptionStatus,
-    default: SubscriptionStatus.TRIALING,
+    default: SubscriptionStatus.PENDING,
   })
   status: SubscriptionStatus;
 
@@ -39,6 +39,9 @@ export class Subscription extends BaseEntity {
 
   @Column({ type: 'int', default: 0 })
   dunningAttemptCount: number;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  correlationId?: string | null;
 
   @Column({ type: 'jsonb', nullable: true, default: {} })
   metadata?: Record<string, unknown>;

@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DOMAIN_EVENTS } from '../events/domain-events';
 import { EventStore } from '../events/entities/event-store.entity';
+import {
+  RecoveryLinkService,
+  RecoveryLinkUrls,
+} from '../recovery-channels/recovery-link.service';
 
 export interface EmailTemplateDefinition {
   template: string;
@@ -33,7 +37,11 @@ function formatAmount(amount: unknown, currency = 'NGN'): string | undefined {
 
 @Injectable()
 export class EmailTemplateRegistry {
-  resolve(event: EventStore): EmailTemplateDefinition | null {
+  private readonly logger = new Logger(EmailTemplateRegistry.name);
+
+  constructor(private recoveryLinkService: RecoveryLinkService) {}
+
+  async resolve(event: EventStore): Promise<EmailTemplateDefinition | null> {
     const payload = event.payload ?? {};
 
     switch (event.eventType) {
@@ -50,7 +58,7 @@ export class EmailTemplateRegistry {
       case DOMAIN_EVENTS.INVOICE_PAID:
         return this.invoicePaid(payload);
       case DOMAIN_EVENTS.PAYMENT_FAILED:
-        return this.paymentFailed(payload);
+        return this.paymentFailed(payload, event.merchantId);
       case DOMAIN_EVENTS.PAYMENT_RECOVERED:
         return this.paymentRecovered(payload);
       default:
@@ -169,9 +177,28 @@ export class EmailTemplateRegistry {
     };
   }
 
-  private paymentFailed(payload: PayloadRecord): EmailTemplateDefinition {
+  private async paymentFailed(
+    payload: PayloadRecord,
+    merchantId: string,
+  ): Promise<EmailTemplateDefinition> {
     const payment = asRecord(payload.payment);
     const invoice = asRecord(payload.invoice);
+    const subscriptionId = readString(invoice?.subscriptionId);
+
+    let links: RecoveryLinkUrls | undefined;
+    if (subscriptionId) {
+      try {
+        links = await this.recoveryLinkService.createLinks({
+          merchantId,
+          subscriptionId,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to generate recovery links for subscription ${subscriptionId} — sending payment-failed email without action links`,
+          error,
+        );
+      }
+    }
 
     return {
       template: 'emails/payment-failed',
@@ -183,6 +210,9 @@ export class EmailTemplateRegistry {
           readString(payment?.currency) ?? readString(invoice?.currency),
         ),
         failureReason: readString(payment?.failureReason),
+        retryUrl: links?.retryUrl,
+        pauseUrl: links?.pauseUrl,
+        cancelUrl: links?.cancelUrl,
       },
     };
   }
