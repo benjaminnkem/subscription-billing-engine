@@ -11,16 +11,16 @@ import * as winston from 'winston';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
-    // logger: WinstonModule.createLogger({
-    //   transports: [
-    //     new winston.transports.Console({
-    //       format: winston.format.combine(
-    //         winston.format.timestamp(),
-    //         winston.format.json(),
-    //       ),
-    //     }),
-    //   ],
-    // }),
+    logger: WinstonModule.createLogger({
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+      ],
+    }),
   });
 
   const config = app.get(ConfigService);
