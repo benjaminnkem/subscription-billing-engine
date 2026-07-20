@@ -33,9 +33,10 @@ export default () => ({
     // Sandbox: https://sandbox.monnify.com | Live: https://api.monnify.com
     apiUrl: process.env.MONNIFY_API_URL ?? 'https://sandbox.monnify.com',
     apiKey: process.env.MONNIFY_API_KEY ?? '',
+    // Client secret used for OAuth + monnify-signature (HMAC-SHA512) verification
     secretKey: process.env.MONNIFY_SECRET_KEY ?? '',
     contractCode: process.env.MONNIFY_CONTRACT_CODE ?? '',
-    // Used for monnify-signature verification; falls back to secretKey when unset
+    // Optional override; signature verification prefers secretKey
     webhookSecret: process.env.MONNIFY_WEBHOOK_SECRET ?? '',
     subAccountId: process.env.MONNIFY_SUB_ACCOUNT_ID ?? '',
   },

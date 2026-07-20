@@ -45,6 +45,7 @@ export class PaymentsService {
       invoice.customerId,
     );
 
+    // Use payment.id as Monnify paymentReference so webhooks can match by id
     const payment = await this.paymentRepo.save(
       this.paymentRepo.create({
         merchantId,
@@ -53,11 +54,13 @@ export class PaymentsService {
         amount: invoice.total,
         currency: invoice.currency,
         status: PaymentStatus.PENDING,
-        monnifyPaymentReference: undefined,
       }),
     );
 
     const paymentReference = payment.id;
+    // Persist reference up front so a webhook that races checkout still matches
+    payment.monnifyPaymentReference = paymentReference;
+    await this.paymentRepo.save(payment);
 
     const result = await this.monnifyService.createCheckout({
       paymentReference,
@@ -68,8 +71,6 @@ export class PaymentsService {
       customerEmail: customer.email,
       paymentDescription: `Invoice ${invoice.id}`,
     });
-
-    console.log({ result });
 
     if (!result.success || !result.checkoutUrl) {
       payment.status = PaymentStatus.FAILED;

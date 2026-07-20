@@ -94,8 +94,8 @@ export class MonnifyWebhooksService {
     headers: MonnifyWebhookHeaders,
   ): void {
     const secret =
-      this.config.get<string>('monnify.webhookSecret') ||
-      this.config.get<string>('monnify.secretKey');
+      this.config.get<string>('monnify.secretKey') ||
+      this.config.get<string>('monnify.webhookSecret');
     const nodeEnv = this.config.get<string>('nodeEnv');
 
     if (!secret) {
@@ -105,18 +105,31 @@ export class MonnifyWebhooksService {
         );
       }
       this.logger.warn(
-        'MONNIFY_WEBHOOK_SECRET / MONNIFY_SECRET_KEY not set — skipping signature verification',
+        'MONNIFY_SECRET_KEY / MONNIFY_WEBHOOK_SECRET not set — skipping signature verification',
       );
       return;
     }
 
     const signature = headers.signature;
+    if (!signature) {
+      if (nodeEnv === 'production') {
+        throw new UnauthorizedException('Missing Monnify webhook signature');
+      }
+      this.logger.warn(
+        'Missing monnify-signature header — accepting webhook in non-production',
+      );
+      return;
+    }
+
     const bodyForVerify = headers.rawBody ?? payload;
 
-    if (
-      !signature ||
-      !verifyMonnifySignature(bodyForVerify, secret, signature)
-    ) {
+    if (!verifyMonnifySignature(bodyForVerify, secret, signature)) {
+      this.logger.error({
+        msg: 'Invalid Monnify webhook signature',
+        hasRawBody: Boolean(headers.rawBody),
+        rawBodyLength: headers.rawBody?.length,
+        signaturePrefix: signature.slice(0, 16),
+      });
       throw new UnauthorizedException('Invalid Monnify webhook signature');
     }
   }
@@ -145,6 +158,9 @@ export class MonnifyWebhooksService {
     }
 
     if (payment.status === PaymentStatus.SUCCEEDED) {
+      this.logger.log(
+        `Payment ${payment.id} already succeeded — idempotent webhook ignore after token persist`,
+      );
       await this.persistCardToken(payload, payment);
       await this.recordEvent(eventKey, payload.eventType, payload, payment);
       return;
@@ -153,6 +169,10 @@ export class MonnifyWebhooksService {
     const transactionReference = payload.eventData.transactionReference;
     const paymentReference = payload.eventData.paymentReference;
     const wasFailed = payment.status === PaymentStatus.FAILED;
+
+    this.logger.log(
+      `Marking payment ${payment.id} as SUCCEEDED (subscription=${payment.subscriptionId ?? 'none'})`,
+    );
 
     payment.status = PaymentStatus.SUCCEEDED;
     payment.monnifyTransactionReference =
@@ -213,6 +233,9 @@ export class MonnifyWebhooksService {
         }
 
         if (subscription.status !== SubscriptionStatus.ACTIVE) {
+          this.logger.log(
+            `Activating subscription ${subscription.id} from status=${subscription.status}`,
+          );
           await this.subscriptionsService.transitionStatus(
             subscription,
             SubscriptionStatus.ACTIVE,
@@ -221,6 +244,10 @@ export class MonnifyWebhooksService {
           await this.subscriptionRepo.save(subscription);
         }
       }
+    } else {
+      this.logger.warn(
+        `Payment ${payment.id} has no subscriptionId — invoice marked paid but no subscription activated`,
+      );
     }
 
     await this.eventsService.emit(DOMAIN_EVENTS.INVOICE_PAID, {
@@ -394,7 +421,38 @@ export class MonnifyWebhooksService {
       if (byId) return byId;
     }
 
+    // Fallback: paymentDescription is "Invoice <invoiceId>"
+    const invoiceId = this.extractInvoiceId(data.paymentDescription);
+    if (invoiceId) {
+      const byInvoice = await this.paymentRepo.findOne({
+        where: { invoiceId },
+        order: { createdAt: 'DESC' },
+      });
+      if (byInvoice) {
+        this.logger.log(
+          `Resolved payment ${byInvoice.id} via invoice id ${invoiceId} from paymentDescription`,
+        );
+        return byInvoice;
+      }
+    }
+
+    this.logger.warn({
+      msg: 'Could not resolve payment for Monnify webhook',
+      paymentReference: data.paymentReference,
+      transactionReference: data.transactionReference,
+      productReference: data.product?.reference,
+      paymentDescription: data.paymentDescription,
+    });
+
     return null;
+  }
+
+  private extractInvoiceId(description: unknown): string | undefined {
+    if (typeof description !== 'string') return undefined;
+    const match = description.match(
+      /Invoice\s+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+    );
+    return match?.[1];
   }
 
   private async persistCardToken(
