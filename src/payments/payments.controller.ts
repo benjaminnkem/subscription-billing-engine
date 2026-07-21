@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -6,6 +6,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { CurrentMerchant } from '../common/decorators/current-merchant.decorator';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { PaymentsService } from './payments.service';
@@ -31,8 +32,11 @@ export class PaymentsController {
   @Get()
   @ApiOperation({ summary: 'List payments' })
   @ApiResponse({ status: 200 })
-  findAll(@CurrentMerchant() merchantId: string) {
-    return this.paymentsService.findAll(merchantId);
+  findAll(
+    @CurrentMerchant() merchantId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.paymentsService.findAll(merchantId, pagination);
   }
 
   @Get(':id')

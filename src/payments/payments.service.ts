@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { CustomersService } from '../customers/customers.service';
 import { DOMAIN_EVENTS } from '../events/domain-events';
 import { EventsService } from '../events/events.service';
@@ -176,12 +177,18 @@ export class PaymentsService {
     return updated;
   }
 
-  async findAll(merchantId: string): Promise<Payment[]> {
-    return this.paymentRepo.find({
+  async findAll(
+    merchantId: string,
+    { page = 1, limit = 20 }: PaginationDto,
+  ): Promise<{ data: Payment[]; total: number }> {
+    const [data, total] = await this.paymentRepo.findAndCount({
       where: { merchantId },
       relations: { attempts: true },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return { data, total };
   }
 
   async findOne(merchantId: string, id: string): Promise<Payment> {
