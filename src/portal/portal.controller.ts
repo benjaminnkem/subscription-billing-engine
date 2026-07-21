@@ -18,7 +18,11 @@ export class PortalController {
   })
   @ApiCreatedResponse({ description: 'Login link has been successfully generated and sent via email.' })
   requestLogin(@Body() dto: PortalLoginRequestDto) {
-    return this.portalService.requestLogin(dto.email, dto.merchantId);
+    return this.portalService.requestLogin(
+      dto.email,
+      dto.merchantId,
+      dto.mode ?? 'live',
+    );
   }
 
   @Public()

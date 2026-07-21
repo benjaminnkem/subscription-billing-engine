@@ -15,4 +15,8 @@ export class PortalSession extends BaseEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   usedAt?: Date | null;
+
+  /** Which portal config mode was used when the magic link was issued */
+  @Column({ type: 'varchar', length: 10, default: 'live' })
+  mode: 'test' | 'live';
 }
