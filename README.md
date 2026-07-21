@@ -1,99 +1,218 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Subflow · Monnify Subscription Engine
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Multi-tenant **subscription billing engine** for African merchants. Subflow sits on [Monnify](https://monnify.com) as the payments rail and delivers the full subscription stack: plans, checkout, tokenized renewals, dunning, webhooks, analytics, customer portal, and live event observability (Mission Control).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> **One line:** Plans, Monnify checkout, renewals, recovery, and ops visibility, not just a pay button.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
 
-## Project setup
+| Area | What you get |
+|------|----------------|
+| **Merchants & auth** | Multi-tenant signup/login, JWT access/refresh, API keys |
+| **Catalog** | Plans (intervals, trials), customers, metadata |
+| **Subscriptions** | Lifecycle: pending → active / trial / past due / suspended / cancelled |
+| **Billing** | Invoices, proration helpers, recurring charge path |
+| **Payments (Monnify)** | Hosted checkout, card-token charges, webhook activation |
+| **Dunning** | Failed-payment retries and recovery flows |
+| **Portal** | Magic-link customer self-serve (plan, pause, cancel, invoices) |
+| **Ops** | Analytics metrics, Mission Control event stream, chaos scenarios |
+| **Integrations** | Outbound merchant webhooks, email notifications, recovery channels |
 
-```bash
-$ pnpm install
+Companion **merchant dashboard** (Next.js) lives in the `subscription-engine-dashboard` repo and talks to this API.
+
+---
+
+## Stack
+
+- **Runtime:** NestJS 11, TypeScript  
+- **Data:** PostgreSQL + TypeORM  
+- **Queues / realtime:** Redis, BullMQ, Socket.IO  
+- **Payments:** Monnify REST API (sandbox or live)  
+- **Docs:** Swagger at `/docs`  
+
+---
+
+## Architecture (high level)
+
+```
+Merchant Dashboard  ──JWT──►  Subflow API (this repo)
+Customer Portal     ──token─►  /portal/*
+Monnify Checkout    ──pay──►  Monnify
+Monnify Webhooks    ──POST─►  /webhooks/monnify
 ```
 
-## Compile and run the project
+**Typical first-payment flow**
 
-```bash
-# development
-$ pnpm run start
+1. Merchant creates plan + customer + subscription.  
+2. API creates invoice + payment and calls Monnify **init-transaction**.  
+3. Customer pays on Monnify hosted checkout.  
+4. Monnify sends `SUCCESSFUL_TRANSACTION` to `/webhooks/monnify`.  
+5. API verifies signature, marks payment/invoice paid, activates subscription, optionally stores card token for renewals.
 
-# watch mode
-$ pnpm run start:dev
+---
 
-# production mode
-$ pnpm run start:prod
+## Monnify integration
+
+### Outbound (API → Monnify)
+
+| Purpose | Method | Path |
+|---------|--------|------|
+| Auth / access token | `POST` | `/api/v1/auth/login` |
+| Checkout (init transaction) | `POST` | `/api/v1/merchant/transactions/init-transaction` |
+| Tokenized charge | `POST` | `/api/v1/merchant/cards/charge-card-token` |
+| Query transaction | `GET` | `/api/v2/merchant/transactions/query` |
+| List banks | `GET` | `/api/v1/sdk/transactions/banks` |
+| Validate account | `GET` | `/api/v1/disbursements/account/validate` |
+
+Base URL:
+
+- Sandbox: `https://sandbox.monnify.com`  
+- Live: `https://api.monnify.com`  
+
+### Inbound (Monnify → API)
+
+| Purpose | Method | Path |
+|---------|--------|------|
+| Payment webhooks | `POST` | `/webhooks/monnify` |
+
+Signature verification uses **HMAC-SHA512** of the raw body with `MONNIFY_SECRET_KEY` (legacy concat SHA-512 is also accepted). Configure the Transaction Completion webhook in the Monnify dashboard to:
+
+```text
+https://<your-api-host>/webhooks/monnify
 ```
 
-## Run tests
+---
+
+## Prerequisites
+
+- Node.js 20+  
+- [pnpm](https://pnpm.io)  
+- PostgreSQL  
+- Redis  
+
+---
+
+## Quick start
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm install
+cp .env.example .env   # or create .env from the table below
+# ensure Postgres + Redis are running, then:
+pnpm run start:dev
 ```
 
-## Deployment
+- API: `http://localhost:<PORT>` (default `3000`, often `6555` in local `.env`)  
+- Swagger: `http://localhost:<PORT>/docs`  
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NODE_ENV` | `development` \| `production` |
+| `PORT` | HTTP port |
+| `APP_NAME` | Display name (default `Subflow`) |
+| `APP_URL` | Public API base URL |
+| `DASHBOARD_URL` | Merchant dashboard URL (portal magic links) |
+| `CORS_ORIGINS` | Comma-separated allowed origins |
+| **Database** | |
+| `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | Postgres connection |
+| **Redis** | |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_URL` | Queue + cache |
+| **Auth** | |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing |
+| `JWT_ACCESS_EXPIRY` / `JWT_REFRESH_EXPIRY` | e.g. `15m`, `7d` |
+| `ENCRYPTION_KEY` | 32-byte key for sensitive fields |
+| **Monnify** | |
+| `MONNIFY_API_URL` | Sandbox or live base URL |
+| `MONNIFY_API_KEY` | API key from dashboard |
+| `MONNIFY_SECRET_KEY` | Client secret (API auth + webhook HMAC) |
+| `MONNIFY_CONTRACT_CODE` | Required for checkout + token charges |
+| `MONNIFY_WEBHOOK_SECRET` | Optional; verification prefers secret key |
+| `MONNIFY_SUB_ACCOUNT_ID` | Optional split/sub-account |
+| **Mail** | |
+| `MAIL_ENABLED` / `MAIL_HOST` / `MAIL_PORT` / `MAIL_USER` / `MAIL_PASSWORD` | SMTP (e.g. Brevo) |
+| `MAIL_FROM_NAME` / `MAIL_FROM_ADDRESS` | From header |
+
+In development, TypeORM `synchronize` may be enabled. Prefer migrations for shared/production databases.
+
+---
+
+## Scripts
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm run start:dev    # watch mode
+pnpm run build        # compile to dist/
+pnpm run start:prod   # run dist/main
+pnpm run test         # unit tests
+pnpm run test:e2e     # e2e tests
+pnpm run lint         # ESLint
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Key modules (`src/`)
 
-Check out a few resources that may come in handy when working with NestJS:
+| Module | Role |
+|--------|------|
+| `auth` / `merchants` | Signup, JWT, merchant profile |
+| `plans` / `customers` / `subscriptions` | Catalog + lifecycle |
+| `invoices` / `billing` / `payments` | Invoicing + Monnify |
+| `dunning` / `recovery-channels` | Failed payment recovery |
+| `portal` | Customer magic-link portal API |
+| `analytics` | Metrics for dashboard |
+| `events` | Domain events + Mission Control stream |
+| `webhooks` | Outbound merchant webhooks |
+| `chaos` | Non-prod payment/webhook failure injection |
+| `mail` / `notifications` | Email and notification delivery |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## Core API surface (summary)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Authenticated routes use `Authorization: Bearer <access_token>`.
 
-## Stay in touch
+| Area | Examples |
+|------|----------|
+| Auth | `POST /auth/signup`, `POST /auth/login` |
+| Plans / customers / subscriptions | CRUD under `/plans`, `/customers`, `/subscriptions` |
+| Payments | `POST /payments/checkout`, `GET /payments` |
+| Monnify webhooks | `POST /webhooks/monnify` (public) |
+| Portal | `POST /portal/login`, `GET /portal/session`, `POST /portal/session/action` |
+| Analytics | `/analytics/*` |
+| Mission Control | Events over HTTP + Socket.IO |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Full contract: **Swagger** at `/docs`.
+
+---
+
+## Webhook & local development
+
+1. Expose the API publicly (e.g. ngrok / Cloudflare Tunnel).  
+2. Point Monnify Transaction Completion URL to `https://<tunnel>/webhooks/monnify`.  
+3. Use sandbox keys + contract code.  
+4. After a test payment, confirm:
+   - payment status `succeeded`
+   - invoice `paid`
+   - subscription `active`
+   - event visible in Mission Control (dashboard)
+
+Signature verification needs the **raw body** (`rawBody: true` is enabled in `main.ts`).
+
+---
+
+## Related repos
+
+| Repo | Role |
+|------|------|
+| **monnify-subscription-engine** (this) | NestJS API + Monnify integration |
+| **subscription-engine-dashboard** | Merchant dashboard, landing page, customer portal UI |
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-# subscription-billing-engine
+UNLICENSED / private unless otherwise specified by the project owners.
